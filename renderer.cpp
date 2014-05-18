@@ -264,7 +264,7 @@ reshape(int w, int h)
 Point2D
 mouseToPoint(int x, int y)
 {
-    return Point2D(float(x)/windowWidth, 1.0 - float(y)/windowHeight);
+    return Point2D(int(float(x)/windowWidth *100) * 0.01, int((1.0 - float(y)/windowHeight) * 100) * 0.01);
 }
 
 // called on mouse button events

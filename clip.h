@@ -275,21 +275,19 @@ void ClipMerge(float a1x, float a1y, float a2x, float a2y, float a3x, float a3y,
 				if(insect_c.loc >= 0)	{
 					insect_c.loc += ic;
 					insect_c.loc2 = insect_s.loc + is;
-					interPts[interPtsCnt++] = insect_c;
+					if(interPts[interPtsCnt - 1].loc > insect_c.loc)	{
+						if(insect_c.loc != interPts[interPtsCnt - 2].loc)	{
+							interPts[interPtsCnt] = interPts[interPtsCnt - 1];
+							interPts[interPtsCnt - 1] = insect_c;
+							interPtsCnt++;
+						}
+					} else if(interPts[interPtsCnt - 1].loc < insect_c.loc)
+						interPts[interPtsCnt++] = insect_c;
+					
 				}
 			}
 		}
 
-		//bool sIsCCW = false;
-
-		//if(interPtsCnt > 1)
-		//	sIsCCW = ((interPts[0].loc2 - interPts[1].loc2) * (interPts[0].loc - interPts[1].loc) < 0);
-		//cout<<"sIsCCW :"<<sIsCCW <<endl;
-
-		//for(int i = 0 ; i < interPtsCnt; i++)	{
-		//	cout<<interPts[i].loc<<"\t";
-		//}
-		//cout<<endl;
 		for(int i = 0 ; i < interPtsCnt; i++)	{
 
 			int inext = (i+1) % interPtsCnt;
