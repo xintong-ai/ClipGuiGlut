@@ -50,6 +50,7 @@ class Triangle {
   public:
 	Point2D pts[3]; // the points defining the triangle
     Triangle();
+	Triangle(float2 a, float2 b, float2 c);
 
     void draw(); // draw the triangle
     bool onDown(Point2D p); // call on mouse-down
@@ -64,6 +65,16 @@ Triangle::Triangle()
     pts[2] = Point2D(0.15, 0.30);
     dragPoint = -1;
 }
+
+Triangle::Triangle(float2 a, float2 b, float2 c)
+{
+    // init default triangle
+    pts[0] = Point2D(a.x, a.y);
+    pts[1] = Point2D(b.x, b.y);
+    pts[2] = Point2D(c.x, c.y);
+    dragPoint = -1;
+}
+
 
 void
 Triangle::draw()
@@ -173,7 +184,7 @@ inline void clipTwoTriangles()
 void
 init()
 {
-    triangles.push_back(new Triangle); // create initial triangle
+    triangles.push_back(new Triangle(make_float2(0.1,0.2), make_float2(0.6,0.5), make_float2(0.4,0.3))); // create initial triangle
 	triangles.push_back(new Triangle); 
 	//triangles.front()->pts[0].x
 	clipTwoTriangles();

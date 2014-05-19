@@ -118,6 +118,68 @@ inline bool testInside(pt p, trgl t)
 	return inside;
 }
 
+struct float2
+{
+    float x; float y;
+};
+
+inline float2 make_float2(float x, float y)
+{
+  float2 t; t.x = x; t.y = y; return t;
+}
+
+inline float2 operator+(float2 a, float2 b)
+{
+    return make_float2(a.x + b.x, a.y + b.y);
+}
+
+inline float2 operator-(float2 a, float2 b)
+{
+    return make_float2(a.x - b.x, a.y - b.y);
+}
+
+
+inline float cross(float ax, float ay, float bx, float by)
+{ 
+    return ax*by - ay*bx; 
+}
+
+inline float cross(float2 a, float2 b)
+{ 
+    return a.x*b.y - a.y*b.x; 
+}
+
+//http://blogs.msdn.com/b/rezanour/archive/2011/08/07/barycentric-coordinates-and-point-in-triangle-tests.aspx?Redirected=true
+inline bool PointInTriangle(float2 A, float2 B, float2 C, float2 P)
+{
+    // Prepare our barycentric variables
+    float2 u = B - A;
+    float2 v = C - A;
+    float2 w = P - A;
+ 
+    float vCrossW = cross(v, w);
+    float vCrossU = cross(v, u);
+ 
+    // Test sign of r
+    if (vCrossW *vCrossU <= 0)	//if using <, the case that vertex on edge is treated as inside.
+        return false;
+ 
+    float uCrossW = cross(u, w);
+    float uCrossV = cross(u, v);
+ 
+    // Test sign of t
+    if (uCrossW * uCrossV <= 0)
+        return false;
+ 
+    // At this point, we know that r and t and both > 0.
+    // Therefore, as long as their sum is <= 1, each must be less <= 1
+    float denom = abs(uCrossV);
+    float r = abs(vCrossW) / denom;
+    float t = abs(uCrossW) / denom;
+ 
+    return (r + t < 1);	//if using <=, the case that vertex on edge is treated as inside.
+}
+
 inline void swap(pt &p1, pt &p2)
 {
 	pt tmp;
@@ -126,10 +188,6 @@ inline void swap(pt &p1, pt &p2)
 	p2 = tmp;
 }
 
-inline float cross(float ax, float ay, float bx, float by)
-{ 
-    return ax*by - ay*bx; 
-}
 
 //touching boundary is also intersect
 inline bool BIntersectIncludeBoundary(pt p1, pt p2, pt q1, pt q2)
@@ -214,6 +272,36 @@ inline void AddIntersection(trgl ts, trgl tc, pt *clipped_array, int &clipped_cn
 	}
 }
 
+		//float loc1 = interPts[i].loc;
+		//float loc2 = interPts[inext].loc;
+		//clipped[clippedCnt++] = interPts[i];
+		////in case loc2 is in the next round
+		//if(loc2 < loc1)
+		//	loc2 += 3;
+		////add inside vertices from c
+		//for(int j = ceil(loc1); j <= floor(loc2); j++ )	{
+		//	if(tc.p[j % 3].loc > 0)	{
+		//		clipped[clippedCnt++] = tc.p[j % 3];
+		//		tc.p[j % 3].loc = false;	//remove the mark of inside point if it is already added to the clipped polygon
+		//	}
+		//}
+
+inline void AddInsidePoints(pt *clipped, int &clippedCnt, float loc1, float loc2, pt *ts_p)
+{
+		//for the triangle s
+		//int loc1 = interPts[i].loc2;
+		//int loc2 = interPts[inext].loc2;
+
+		if(loc2 < loc1)
+			loc2 += 3;
+		for(int j = ceil(loc1); j <= floor(loc2); j++ )	{
+			if(ts_p[j % 3].loc > 0)	{
+				clipped[clippedCnt++] = ts_p[j % 3];
+				ts_p[j % 3].loc = false;
+			}
+		}
+}
+
 void ClipMerge(float a1x, float a1y, float a2x, float a2y, float a3x, float a3y, 
 			   float b1x, float b1y, float b2x, float b2y, float b3x, float b3y,
 			   float &c1x, float &c1y, float &c2x, float &c2y, float &c3x, float &c3y,
@@ -248,79 +336,63 @@ void ClipMerge(float a1x, float a1y, float a2x, float a2y, float a3x, float a3y,
 
 	//mark inside or outside for the triangle vertices
 	//and count the number of inside vertices
-	pt interPts[8];
-	pt clipped[8];
+	pt interPts[6];
+	pt clipped[6];
 	int clippedCnt = 0;
 	int interPtsCnt = 0;
 	for(int i = 0; i < 3; i++)	{
-		tc.p[i].loc = testInside(tc.p[i], ts);
-		ts.p[i].loc = testInside(ts.p[i], tc);
+		tc.p[i].loc = PointInTriangle(	make_float2(ts.p[0].x, ts.p[0].y), 
+										make_float2(ts.p[1].x, ts.p[1].y),
+										make_float2(ts.p[2].x, ts.p[2].y),
+										make_float2(tc.p[i].x, tc.p[i].y));//testInside(tc.p[i], ts);
+		ts.p[i].loc = PointInTriangle(	make_float2(tc.p[0].x, tc.p[0].y), 
+										make_float2(tc.p[1].x, tc.p[1].y),
+										make_float2(tc.p[2].x, tc.p[2].y),
+										make_float2(ts.p[i].x, ts.p[i].y));//testInside(ts.p[i], tc);
 	}
 
-	if(tc.p[0].loc > 0 && tc.p[1].loc > 0 && tc.p[2].loc > 0)	{
-		clipped[clippedCnt++] = tc.p[0];
-		clipped[clippedCnt++] = tc.p[1];
-		clipped[clippedCnt++] = tc.p[2];
-	} else if(ts.p[0].loc > 0 && ts.p[1].loc > 0 && ts.p[2].loc > 0)	{
-		clipped[clippedCnt++] = ts.p[0];
-		clipped[clippedCnt++] = ts.p[1];
-		clipped[clippedCnt++] = ts.p[2];
-	} else {
-		for(int ic = 0; ic < 3; ic++)	{
-			for(int is = 0; is < 3; is++)	{
-				pt insect_s, insect_c;
-				Intersect(tc.p[ic], tc.p[(ic+1)%3], ts.p[is], ts.p[(is+1)%3 ],
-					insect_c, insect_s);
+	for(int ic = 0; ic < 3; ic++)	{
+		for(int is = 0; is < 3; is++)	{
+			pt insect_s, insect_c;
+			Intersect(tc.p[ic], tc.p[(ic+1)%3], ts.p[is], ts.p[(is+1)%3 ],
+				insect_c, insect_s);
 			
-				if(insect_c.loc >= 0)	{
-					insect_c.loc += ic;
-					insect_c.loc2 = insect_s.loc + is;
-					if(interPts[interPtsCnt - 1].loc > insect_c.loc)	{
-						if(insect_c.loc != interPts[interPtsCnt - 2].loc)	{
-							interPts[interPtsCnt] = interPts[interPtsCnt - 1];
-							interPts[interPtsCnt - 1] = insect_c;
-							interPtsCnt++;
-						}
-					} else if(interPts[interPtsCnt - 1].loc < insect_c.loc)
-						interPts[interPtsCnt++] = insect_c;
+			if(insect_c.loc >= 0)	{
+				insect_c.loc += ic;
+				insect_c.loc2 = insect_s.loc + is;
+				//if the new point's location is smaller than the previously added vertex
+				//add the new points before the previously added vertex
+				if(interPts[interPtsCnt - 1].loc > insect_c.loc)	
+				{    
+					if(insect_c.loc != interPts[interPtsCnt - 2].loc)	//also make sure the new point's location is not the same as the last but one added vertex
+					{
+						interPts[interPtsCnt] = interPts[interPtsCnt - 1];
+						interPts[interPtsCnt - 1] = insect_c;
+						interPtsCnt++;
+					}
+				} else if(interPts[interPtsCnt - 1].loc < insect_c.loc)	
+					interPts[interPtsCnt++] = insect_c;
 					
-				}
-			}
-		}
-
-		for(int i = 0 ; i < interPtsCnt; i++)	{
-
-			int inext = (i+1) % interPtsCnt;
-			//if the two intersection points are reversed, the last one is never reversed
-			if(interPts[i].loc > interPts[inext].loc && inext != 0)
-				swap(interPts[i], interPts[inext]);
-			float loc1 = interPts[i].loc;
-			float loc2 = interPts[inext].loc;
-			clipped[clippedCnt++] = interPts[i];
-			//in case loc2 is in the next round
-			if(loc2 < loc1)
-				loc2 += 3;
-			//add inside vertices from c
-			for(int j = ceil(loc1); j <= floor(loc2); j++ )	{
-				if(tc.p[j % 3].loc > 0)
-					clipped[clippedCnt++] = tc.p[j % 3];
-			}
-
-			//for the triangle s
-			loc1 = interPts[i].loc2;
-			loc2 = interPts[inext].loc2;
-
-			if(loc2 < loc1)
-				loc2 += 3;
-			for(int j = ceil(loc1); j <= floor(loc2); j++ )	{
-				if(ts.p[j % 3].loc > 0)
-					clipped[clippedCnt++] = ts.p[j % 3];
 			}
 		}
 	}
 
+	for(int i = 0 ; i < interPtsCnt; i++)	{
+		int inext = (i+1) % interPtsCnt;
+		clipped[clippedCnt++] = interPts[i];
+		AddInsidePoints(clipped, clippedCnt, interPts[i].loc, interPts[inext].loc, tc.p);
+		AddInsidePoints(clipped, clippedCnt, interPts[i].loc2, interPts[inext].loc2, ts.p);
+	}
 
-	//std::cout<<clippedCnt<<"\t";
+	//this takes care of two cases
+	//case 1: all clipped polygon points are inside points
+	//case 2: only one intersection point, but 2 inside points
+	for(int i = 0; i < 3; i++)	{
+		if(ts.p[i].loc > 0)	
+			clipped[clippedCnt++] = ts.p[i];
+		if(tc.p[i].loc > 0)	
+			clipped[clippedCnt++] = tc.p[i];
+	}
 
 	c1x = clipped[0].x;
 	c1y = clipped[0].y;
